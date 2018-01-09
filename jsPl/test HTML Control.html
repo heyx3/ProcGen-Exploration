@@ -1,0 +1,21 @@
+<html>
+<head>
+
+</head>
+<body>
+<button onclick="showStuff()">Push me</button>
+
+<p id="demo1"></p>
+<p id="demo2" style="display:none">Hello!!</p>
+
+<script>
+function showStuff()
+{
+    //Put text in the first element.
+    document.getElementById('demo1').innerHTML = "Hi!";
+    //Make the second element visible.
+    document.getElementById('demo2').style.display = 'block';
+}
+</script>
+</body>
+</html>

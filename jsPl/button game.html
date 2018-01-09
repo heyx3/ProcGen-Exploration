@@ -1,0 +1,98 @@
+<html>
+<head>
+
+</head>
+
+<body>
+
+<button
+  id="toMove"
+  onmouseover="updateButton(event)"
+  onclick="winGame()"
+  style="position:absolute;width:130;height:130;left:300;top:300">
+    Push me
+</button>
+
+<h1 id="winMessage" style="display:none">
+    You won!
+</h1>
+
+<script>
+function winGame()
+{
+    var button = document.getElementById('toMove'),
+        winMsg = document.getElementById('winMessage');
+    
+    button.style.display = 'none';
+    winMsg.style.display = 'block';
+}
+
+function updateButton(event)
+{
+    var button = document.getElementById('toMove'),
+        buttonRect = button.getBoundingClientRect();
+    var mouseX = event.clientX,
+        mouseY = event.clientY;
+
+    var distToLeft = Math.abs(buttonRect.left - mouseX),
+        distToRight = Math.abs(buttonRect.right - mouseX),
+        distToTop = Math.abs(buttonRect.top - mouseY),
+        distToBottom = Math.abs(buttonRect.bottom - mouseY);
+    
+    button.style.position = 'absolute';
+
+    const extraStep = 80;
+    if (distToLeft <= distToRight && distToLeft <= distToTop && distToLeft <= distToBottom)
+        moveButton(button, buttonRect, mouseX - buttonRect.left + extraStep, 0);
+    else if (distToRight <= distToLeft && distToRight <= distToTop && distToRight <= distToBottom)
+        moveButton(button, buttonRect, buttonRect.right - mouseX - extraStep, 0);
+    else if (distToTop <= distToLeft && distToTop <= distToRight && distToTop <= distToBottom)
+        moveButton(button, buttonRect, 0, mouseY - buttonRect.top + extraStep);
+    else
+        moveButton(button, buttonRect, 0, buttonRect.bottom - mouseY - extraStep);
+}
+function moveButton(button, currentRect, x, y)
+{
+    button.style.left = currentRect.left + x;
+    button.style.top = currentRect.top + y;
+
+    var screenWidth = document.defaultView.innerWidth,
+        screenHeight = document.defaultView.innerHeight;
+
+    const cushion = 25;
+
+    if (currentRect.left + x < 0)
+    {
+        button.style.left = screenWidth - currentRect.width - cushion;
+        cycleButtonName(button);
+    }
+    else if (currentRect.left + x + currentRect.width > screenWidth)
+    {
+        button.style.left = cushion;
+        cycleButtonName(button);
+    }
+
+    if (currentRect.top + y < 0)
+    {
+        button.style.top = screenHeight - currentRect.height - cushion;
+        cycleButtonName(button);
+    }
+    if (currentRect.top + y + currentRect.height > screenHeight)
+    {
+        button.style.top = cushion;
+        cycleButtonName(button);
+    }
+}
+function cycleButtonName(button)
+{
+    const names = [
+            "Almost!", "Close!",
+            "Keep trying!", "Oh no!",
+            "Nearly had it that time!"
+        ];
+
+    button.innerHTML = names[Math.floor(Math.random() * names.length)];
+}
+</script>
+</body>
+</html>
