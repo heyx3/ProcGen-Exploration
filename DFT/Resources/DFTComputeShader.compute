@@ -1,0 +1,131 @@
+﻿//Methods for doing the 1D DFT/IDFT on a row/column part of a 2D texture.
+//Defines COMPONENT for the value to iterate over (x for row, y for column).
+//Defines OTHER_COMPONENT to be the opposite of COMPONENT (y for x, x for y).
+#pragma kernel DFT_Forward_Horz COMPONENT=x OTHER_COMPONENT=y
+#pragma kernel DFT_Forward_Vert COMPONENT=y OTHER_COMPONENT=x
+#pragma kernel DFT_Inverse_Horz COMPONENT=x OTHER_COMPONENT=y
+#pragma kernel DFT_Inverse_Vert COMPONENT=y OTHER_COMPONENT=x
+//Methods for converting between phase/amplitude of a single sine wave,
+//    and the amplitudes of sine/cosine wave pairs.
+#pragma kernel DFT_ConvertToPhaseAmp
+#pragma kernel DFT_ConvertToSinCos
+
+//Fix compile errors for kernels that don't define COMPONENT or OTHER_COMPONENT.
+#ifndef COMPONENT
+    #define COMPONENT x
+    #define OTHER_COMPONENT y
+#endif
+
+//TODO: Pack 2 complex values into each pixel.
+
+//The input and output textures must be the same size!
+uniform Texture2D<float4> Input;
+uniform RWTexture2D<float4> Output;
+
+
+const float TWO_PI = 2.0 * 3.14159265;
+
+float2 MultiplyComplex(float2 a, float2 b)
+{
+	return float2((a.x * b.x) - (a.y * b.y),
+				  (a.x * b.y) + (a.y * b.x));
+}
+
+
+//Calculates the forward DFT for the given position in the input/output textures.
+void DoForward(uint2 texPos)
+{
+    uint2 texSize;
+    Input.GetDimensions(texSize.x, texSize.y);
+	
+    if (texPos.x >= texSize.x || texPos.y >= texSize.y)
+        return;
+
+	//Get the dot product of the samples with the sine/cosine waves.
+    float scale = 1.0f / texSize.COMPONENT;
+    float2 dotResult = 0.0;
+    for (uint sampleI = 0; sampleI < texSize.COMPONENT; ++sampleI)
+    {
+        //Get the sample.
+        uint2 samplePos = 0;
+        samplePos.COMPONENT = sampleI;
+        samplePos.OTHER_COMPONENT = texPos.OTHER_COMPONENT;
+        float2 sample = Input[samplePos].xy;
+
+		//Multiply the sine/cosine with the sample.
+        float trigInput = TWO_PI * texPos.COMPONENT * sampleI * scale;
+        dotResult += MultiplyComplex(sample,
+                                     float2(cos(trigInput), -sin(trigInput)));
+    }
+
+    Output[texPos] = float4(dotResult * scale, 0.0, 1.0);
+}
+//Calculates the inverse DFT for the given position in the input/output textures.
+void DoInverse(uint2 texPos)
+{
+    uint2 texSize;
+    Input.GetDimensions(texSize.x, texSize.y);
+	
+    if (texPos.x >= texSize.x || texPos.y >= texSize.y)
+        return;
+	
+	//Add the sine/cosine wave contributions for every set of frequencies.
+    float scale = 1.0f / texSize.COMPONENT;
+    float2 sum = 0.0;
+    for (uint sampleI = 0; sampleI < texSize.COMPONENT; ++sampleI)
+    {
+		//Get the position we're sampling at.
+        uint2 samplePos = 0;
+        samplePos.COMPONENT = sampleI;
+        samplePos.OTHER_COMPONENT = texPos.OTHER_COMPONENT;
+        float2 sample = Input[samplePos].xy;
+
+		//Add the sine/cosine at this frequency to the result.
+        float trigInput = TWO_PI * texPos.COMPONENT * sampleI * scale;
+        float _sin = sin(trigInput),
+              _cos = cos(trigInput);
+        sum += sample.x * float2(_cos, _sin);
+        sum += sample.y * float2(-_sin, _cos);
+    }
+
+    Output[texPos] = float4(sum, 0.0, 1.0);
+}
+
+float2 DoConvertPhaseAmp(float2 cosSinAmplitudes)
+{
+    return float2(atan2(cosSinAmplitudes.x, cosSinAmplitudes.y),
+                  sqrt(dot(cosSinAmplitudes, cosSinAmplitudes)));
+}
+float2 DoConvertCosSin(float2 phaseAmplitude)
+{
+    float tanPhase = tan(phaseAmplitude.x),
+          sinA = 0.5 * (-tanPhase + sqrt((tanPhase * tanPhase) +
+                                         (4.0 * phaseAmplitude.y * phaseAmplitude.y)));
+    return float2(sinA * tanPhase, sinA);
+}
+
+#define THREADING_ATTRIBUTE [numthreads(16,16,1)]
+
+THREADING_ATTRIBUTE
+void DFT_Test(uint3 id : SV_DispatchThreadID)
+{
+    uint2 texPos = id.xy;
+    
+    uint2 texSize;
+    Input.GetDimensions(texSize.x, texSize.y);
+	
+    if (texPos.x >= texSize.x || texPos.y >= texSize.y)
+        return;
+	
+    Output[texPos] = Input[texPos].rgba;
+}
+
+THREADING_ATTRIBUTE
+void DFT_Forward_Horz(uint3 id : SV_DispatchThreadID) { DoForward(id.xy); }
+THREADING_ATTRIBUTE
+void DFT_Forward_Vert(uint3 id : SV_DispatchThreadID) { DoForward(id.xy); }
+
+THREADING_ATTRIBUTE
+void DFT_Inverse_Horz(uint3 id : SV_DispatchThreadID) { DoInverse(id.xy); }
+THREADING_ATTRIBUTE
+void DFT_Inverse_Vert(uint3 id : SV_DispatchThreadID) { DoInverse(id.xy); }
