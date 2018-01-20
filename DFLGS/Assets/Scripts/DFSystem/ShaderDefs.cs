@@ -10,8 +10,23 @@ namespace DFSystem
     /// </summary>
     public static class ShaderDefs
     {
+		/// <summary>
+		/// Gets the name of the output variable a node should write in the shader,
+		///     given its unique ID.
+		/// </summary>
+		public static string GetOutputVarName(uint id)
+		{
+			return string.Format("dist{0}", id);
+		}
+		/// <summary>
+		/// The name of the variable 
+		/// </summary>
+		public static readonly string PosInputName = "p2";
+
+
         public static readonly string Funcs = @"
 //smin() is a version of min() that gives smooth results when used in distance field functions.
+//TODO: Add the other smin types.
 float smin(float d1, float d2, float k)
 {
     //Source: http://iquilezles.org/www/articles/smin/smin.htm
@@ -54,21 +69,6 @@ float distCone(float3 point, float2 wtf)
 	return dot(wtf, float2(q, point.z));
 }
 //TODO: Capsule, cylinder
-
-//Functions to combine multiple distance functions.
-float distUnion(float d1, float d2)
-{
-	return min(d1, d2);
-}
-float distSubtract(float d1, float d2)
-{
-	return max(-d1, d2);
-}
-float distIntersect(float d1, float d2)
-{
-	return max(d1, d2);
-}
-
 //TODO: Repetition function.
 ";
     }

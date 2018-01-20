@@ -11,6 +11,9 @@ namespace DFSystem
 	/// </summary>
 	public abstract class Node
 	{
+		//TODO: Add LocalTransform and WorldTranslate node.
+
+
 		public List<Node> Inputs = new List<Node>();
 
 		public int NMinNodes { get; private set; }
@@ -25,9 +28,15 @@ namespace DFSystem
 
 
 		/// <summary>
-		/// Writes the shader code to define
+		/// Applies this node's transformation on top of the given one.
+		/// Default behavior: the identity transformation.
 		/// </summary>
-		public abstract void EmitFunctionDefinition(StringBuilder outDef, int transformMatIndex,
-													Dictionary<Node, int> nodeToID);
+		public virtual Matrix4x4 Transform(Matrix4x4 currentMat) { return currentMat; }
+		/// <summary>
+		/// Writes the shader code to compute this node's distance value.
+		/// The final distance value should be named ShaderDefs.GetOutputVarName(uniqueID).
+		/// </summary>
+		public abstract void EmitVariableDef(StringBuilder outDef, uint uniqueID,
+											 Dictionary<Node, uint> nodeToID);
 	}
 }

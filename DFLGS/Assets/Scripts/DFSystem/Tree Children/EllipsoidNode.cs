@@ -7,24 +7,24 @@ using UnityEngine;
 
 namespace DFSystem
 {
-    public class BoxNode : Node
+    public class EllipsoidNode : Node
     {
-        public float SideLength;
+        public Vector3 Radius;
 
-        public BoxNode(float sideLength)
-			: base(0, 0)
+        public EllipsoidNode(Vector3 radius)
+            : base(0, 0)
         {
-			SideLength = sideLength;
+            Radius = radius;
         }
 
 		public override void EmitVariableDef(StringBuilder outDef, uint uniqueID,
 											 Dictionary<Node, uint> nodeToID)
 		{
 			outDef.Append(ShaderDefs.GetOutputVarName(uniqueID));
-			outDef.Append(" = distBox(");
+			outDef.Append(" = distEllipse(");
 			outDef.Append(ShaderDefs.PosInputName);
 			outDef.Append(", ");
-			outDef.Append(SideLength);
+			outDef.Append(Radius);
 			outDef.Append(");");
 		}
     }

@@ -32,7 +32,7 @@ public class LSystemEditor : EditorWindow
 	                       new LSystem.PrioritySystem_Random());
 
 
-	void OnGUI()
+	private void OnGUI()
 	{
 		GUILayout.BeginHorizontal();
 		GUILayout.Label("Seed");
@@ -72,7 +72,8 @@ public class LSystemEditor : EditorWindow
 
 		if (GUILayout.Button("Edit Commands"))
 		{
-			//TODO: Show command editor.
+			var wnd = GetWindow<CommandEditor>();
+			wnd.Show();
 		}
 
         GUILayout.Space(15.0f);

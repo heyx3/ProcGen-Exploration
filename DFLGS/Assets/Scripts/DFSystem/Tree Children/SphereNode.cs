@@ -3,39 +3,27 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-
 namespace DFSystem
 {
     public class SphereNode : Node
     {
         public float Radius;
 
-
-        public SphereNode(float radius, State thisState)
-            : base(thisState)
+        public SphereNode(float radius)
+            : base(0, 0)
         {
             Radius = radius;
         }
 
-
-        protected override void OutputExpression(string childEdgesDist, StringBuilder outCode)
-        {
-            string expr = "(length(pos) - " + Radius.ToString() + ") / " + ThisState.Scale;
-
-            if (childEdgesDist.Length == 0)
-            {
-                outCode.Append("\treturn ");
-                outCode.Append(expr);
-                outCode.AppendLine(";");
-            }
-            else
-            {
-                outCode.Append("\treturn min(");
-                outCode.Append(expr);
-                outCode.Append(", ");
-                outCode.Append(childEdgesDist);
-                outCode.AppendLine(");");
-            }
-        }
+		public override void EmitVariableDef(StringBuilder outDef, uint uniqueID,
+											 Dictionary<Node, uint> nodeToID)
+		{
+			outDef.Append(ShaderDefs.GetOutputVarName(uniqueID));
+			outDef.Append(" = distSphere(");
+			outDef.Append(ShaderDefs.PosInputName);
+			outDef.Append(", ");
+			outDef.Append(Radius);
+			outDef.Append(");");
+		}
     }
 }
