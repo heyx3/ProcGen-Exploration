@@ -18,37 +18,42 @@ namespace DFSystem
 			Inputs.AddRange(toSub);
 		}
 
-		public override void EmitVariableDef(StringBuilder outDef, uint uniqueID,
-											 Dictionary<Node, uint> nodeToID)
+		public override void EmitVariableDef(StringBuilder outDef,
+											 string posName, string varNamePrefix,
+											 uint uniqueID, Dictionary<Node, uint> nodeToID)
 		{
-			outDef.Append(ShaderDefs.GetOutputVarName(uniqueID));
+			outDef.Append(varNamePrefix);
+			outDef.Append(uniqueID);
 			outDef.Append(" = ");
 			
 			//Edge-case: one input.
 			if (Inputs.Count == 1)
 			{
-				outDef.Append(ShaderDefs.GetOutputVarName(nodeToID[Inputs[0]]));
+				outDef.Append(varNamePrefix);
+				outDef.Append(nodeToID[Inputs[0]]);
 				outDef.Append(';');
 				return;
 			}
 
 			outDef.Append("max(-");
-			outDef.Append(ShaderDefs.GetOutputVarName(nodeToID[Inputs[0]]));
+			outDef.Append(varNamePrefix);
+			outDef.Append(nodeToID[Inputs[0]]);
 			outDef.Append(", ");
 
 			//Call the "min" function for every pair of inputs.
 			for (int i = 1; i < Inputs.Count; ++i)
 			{
-				var inputVar = ShaderDefs.GetOutputVarName(nodeToID[Inputs[i]]);
 				if (i < Inputs.Count - 1)
 				{
 					outDef.Append("min(");
-					outDef.Append(inputVar);
+					outDef.Append(varNamePrefix);
+					outDef.Append(nodeToID[Inputs[i]]);
 					outDef.Append(", ");
 				}
 				else
 				{
-					outDef.Append(inputVar);
+					outDef.Append(varNamePrefix);
+					outDef.Append(nodeToID[Inputs[i]]);
 				}
 			}
 			//Close out the function calls.

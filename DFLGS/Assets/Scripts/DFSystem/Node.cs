@@ -7,13 +7,11 @@ using UnityEngine;
 namespace DFSystem
 {
 	/// <summary>
-	/// A specific shape in the distance field.
+	/// An expression in the distance field.
+	/// Part of a tree structure, where child nodes are sub-expressions.
 	/// </summary>
 	public abstract class Node
 	{
-		//TODO: Add LocalTransform and WorldTranslate node.
-
-
 		public List<Node> Inputs = new List<Node>();
 
 		public int NMinNodes { get; private set; }
@@ -28,15 +26,16 @@ namespace DFSystem
 
 
 		/// <summary>
-		/// Applies this node's transformation on top of the given one.
-		/// Default behavior: the identity transformation.
+		/// Applies this node's local transformation, to be applied on top of its parent.
+		/// Default behavior: the identity transform.
 		/// </summary>
-		public virtual Matrix4x4 Transform(Matrix4x4 currentMat) { return currentMat; }
+		public virtual Matrix4x4 Transform() { return Matrix4x4.identity; }
 		/// <summary>
 		/// Writes the shader code to compute this node's distance value.
 		/// The final distance value should be named ShaderDefs.GetOutputVarName(uniqueID).
 		/// </summary>
-		public abstract void EmitVariableDef(StringBuilder outDef, uint uniqueID,
-											 Dictionary<Node, uint> nodeToID);
+		public abstract void EmitVariableDef(StringBuilder outDef,
+											 string posName, string varNamePrefix,
+											 uint uniqueID, Dictionary<Node, uint> nodeToID);
 	}
 }

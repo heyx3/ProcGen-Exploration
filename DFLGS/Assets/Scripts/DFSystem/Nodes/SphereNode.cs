@@ -15,12 +15,14 @@ namespace DFSystem
             Radius = radius;
         }
 
-		public override void EmitVariableDef(StringBuilder outDef, uint uniqueID,
-											 Dictionary<Node, uint> nodeToID)
+		public override void EmitVariableDef(StringBuilder outDef,
+											 string posName, string varNamePrefix,
+											 uint uniqueID, Dictionary<Node, uint> nodeToID)
 		{
-			outDef.Append(ShaderDefs.GetOutputVarName(uniqueID));
+			outDef.Append(varNamePrefix);
+			outDef.Append(uniqueID);
 			outDef.Append(" = distSphere(");
-			outDef.Append(ShaderDefs.PosInputName);
+			outDef.Append(posName);
 			outDef.Append(", ");
 			outDef.Append(Radius);
 			outDef.Append(");");
