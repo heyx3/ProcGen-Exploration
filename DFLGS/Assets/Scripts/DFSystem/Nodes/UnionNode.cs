@@ -1,7 +1,13 @@
 ﻿using System;
-using System.Text;
 using System.Collections.Generic;
+using System.Linq;
+using System.IO;
+using System.Text;
 using UnityEngine;
+
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 
 namespace DFSystem
@@ -86,5 +92,29 @@ namespace DFSystem
 			}
 			outDef.Append(';');
 		}
-    }
+
+		public override void Serialize(BinaryWriter writer)
+		{
+			base.Serialize(writer);
+			writer.Write((byte)UnionType);
+			writer.Write(ExtraParam1);
+		}
+		protected override void _Deserialize(BinaryReader reader)
+		{
+			base._Deserialize(reader);
+			UnionType = (UnionTypes)reader.ReadByte();
+			ExtraParam1 = reader.ReadSingle();
+		}
+		
+#if UNITY_EDITOR
+		public override void EditorGUI()
+		{
+			base.EditorGUI();
+
+			UnionType = (UnionTypes)EditorGUILayout.EnumPopup(UnionType);
+			if (UnionType == UnionTypes.Soft)
+				ExtraParam1 = EditorGUILayout.FloatField(ExtraParam1);
+		}
+#endif
+	}
 }

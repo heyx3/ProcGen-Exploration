@@ -1,8 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
 using System.Text;
 using UnityEngine;
+
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 
 namespace DFSystem
@@ -32,5 +37,30 @@ namespace DFSystem
 			outDef.Append(SmallRadius);
 			outDef.Append(");");
 		}
+
+		public override void Serialize(BinaryWriter writer)
+		{
+			base.Serialize(writer);
+
+			writer.Write(LargeRadius);
+			writer.Write(SmallRadius);
+		}
+		protected override void _Deserialize(BinaryReader reader)
+		{
+			base._Deserialize(reader);
+
+			LargeRadius = reader.ReadSingle();
+			SmallRadius = reader.ReadSingle();
+		}
+
+#if UNITY_EDITOR
+		public override void EditorGUI()
+		{
+			base.EditorGUI();
+
+			LargeRadius = EditorGUILayout.FloatField("Large r:", LargeRadius);
+			SmallRadius = EditorGUILayout.FloatField("Small r:", SmallRadius);
+		}
+#endif
     }
 }

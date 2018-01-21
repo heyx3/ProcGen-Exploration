@@ -25,42 +25,42 @@ float smin(float d1, float d2, float k)
 {
     //Source: http://iquilezles.org/www/articles/smin/smin.htm
     float h = saturate(0.5 + (0.5 * (d1 - d2) / k));
-    return lerp(b, a, h) - (k * h * (1.0 - h));
+    return lerp(d2, d1, h) - (k * h * (1.0 - h));
 }
 
 //Below are the distance functions for basic shapes.
 //These are all signed distance functions.
 //Source: http://www.iquilezles.org/www/articles/distfunctions/distfunctions.htm
-float distSphere(float3 point, float radius)
+float distSphere(float3 pos, float radius)
 {
-	return length(point) - radius;
+	return length(pos) - radius;
 }
-float distBox(float3 point, float sideLength)
+float distBox(float3 pos, float sideLength)
 {
-	float3 dist = abs(point) - sideLength.xxx;
+	float3 dist = abs(pos) - sideLength.xxx;
 	return min(max(dist.x, max(dist.y, dist.z)),
 			   0.0) +
-		   length(max(d, 0.0));
+		   length(max(dist, 0.0));
 }
-float distPlane(float3 point)
+float distPlane(float3 pos)
 {
-	return point.y;
+	return pos.y;
 }
-float distEllipsoid(float3 point, float3 radius)
+float distEllipsoid(float3 pos, float3 radius)
 {
 	float smallestRadius = min(min(radius.x, radius.y), radius.z);
-	return smallestRadius * (length(point / radius) - 1.0)
+	return smallestRadius * (length(pos / radius) - 1.0);
 }
-float distTorus(float3 point, float largeRadius, float smallRadius)
+float distTorus(float3 pos, float largeRadius, float smallRadius)
 {
-	float2 cylinderPos = float2(length(point.xz) - largeRadius, point.y);
+	float2 cylinderPos = float2(length(pos.xz) - largeRadius, pos.y);
 	return length(cylinderPos) - smallRadius;
 }
-float distCone(float3 point, float2 wtf)
+float distCone(float3 pos, float2 wtf)
 {
 	//TODO: How tf is the cone defined?
-	float q = length(point.xy);
-	return dot(wtf, float2(q, point.z));
+	float q = length(pos.xy);
+	return dot(wtf, float2(q, pos.z));
 }
 //TODO: Add the other smin types.
 //TODO: Capsule, cylinder
@@ -71,6 +71,11 @@ float distCone(float3 point, float2 wtf)
 		public Node Root;
 
 		public DFTree(Node root) { Root = root; }
+		public DFTree(string lSysOutput, List<Command> commands)
+		{
+			Root = new BoxNode(0.5f);
+			//TODO: Implement.
+		}
 
 		public string GenerateDistanceFunc(string funcName)
 		{
