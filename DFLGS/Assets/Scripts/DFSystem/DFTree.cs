@@ -73,8 +73,64 @@ float distCone(float3 pos, float2 wtf)
 		public DFTree(Node root) { Root = root; }
 		public DFTree(string lSysOutput, List<Command> commands)
 		{
-			Root = new BoxNode(0.5f);
-			//TODO: Implement.
+			if (lSysOutput.Length == 0)
+			{
+				Root = null;
+				return;
+			}
+
+			//Build dictionaries for quicker command lookups.
+			var charToStartCommand = new Dictionary<char, Command>(commands.Count);
+			var charToEndCommand = new Dictionary<char, Command>();
+			foreach (var command in commands)
+			{
+				//Make sure the command is completely new.
+				if (charToStartCommand.ContainsKey(command.StartChar) ||
+					charToEndCommand.ContainsKey(command.StartChar) ||
+					(command.EndChar.HasValue &&
+					 (charToStartCommand.ContainsKey(command.EndChar.Value) ||
+					  charToEndCommand.ContainsKey(command.EndChar.Value))))
+				{
+					throw new ArgumentException("Command " + command +
+												" shares a char with another command");
+				}
+
+				charToStartCommand.Add(command.StartChar, command);
+				if (command.EndChar.HasValue)
+					charToEndCommand.Add(command.EndChar.Value, command);
+			}
+
+			//Convert each command character to a node.
+			var parentsStack = new Stack<KeyValuePair<Node, Command>>();
+			List<Node> nodes = new List<Node>(lSysOutput.Length);
+			foreach (char c in lSysOutput)
+			{
+				if (charToStartCommand.ContainsKey(c))
+				{
+					var command = charToStartCommand[c];
+					var node = command.Node.Clone();
+
+					if (parentsStack.Count == 0 && nodes.Count > 0)
+						throw new ArgumentException("No command to nest under");
+					else if (parentsStack.Count > 0)
+						parentsStack.Peek().Key.Inputs.Add(node);
+
+					if (command.EndChar.HasValue)
+						parentsStack.Push(new KeyValuePair<Node, Command>(node, command));
+
+					nodes.Add(node);
+				}
+				else if (charToEndCommand.ContainsKey(c))
+				{
+					var command = charToEndCommand[c];
+					if (parentsStack.Count == 0 || parentsStack.Peek().Value != command)
+						throw new ArgumentException("Unexpected end of command " + command);
+					
+					parentsStack.Pop();
+				}
+			}
+
+			Root = nodes[0];
 		}
 
 		public string GenerateDistanceFunc(string funcName)
@@ -156,8 +212,9 @@ float distCone(float3 pos, float2 wtf)
 			outCode.AppendLine("{");
 
 			//Generate the transformed positions using hard-coded matrices.
-			outCode.AppendLine("\tfloat4 pos4d;");
 			outCode.AppendLine("\tfloat4 inputPos4d = float4(inputPos, 1.0);");
+			outCode.AppendLine("\tfloat4 pos4d;");
+			outCode.AppendLine();
 			for (int i = 0; i < transforms.Count; ++i)
 			{
 				outCode.AppendLine("\tpos4d = mul(");
@@ -168,6 +225,7 @@ float distCone(float3 pos, float2 wtf)
 				outCode.Append(i);
 				outCode.AppendLine(" = pos4d.xyz / pos4d.w;");
 			}
+			outCode.AppendLine();
 
 			//From the deepest nodes to the root, write out each node's expression.
 			for (int i = nodesInAscendingDepth.Count - 1; i >= 0; --i)
@@ -186,6 +244,7 @@ float distCone(float3 pos, float2 wtf)
 				outCode.AppendLine();
 
 				outCode.AppendLine("\t}");
+				outCode.AppendLine();
 			}
 
 			//Finish the function.

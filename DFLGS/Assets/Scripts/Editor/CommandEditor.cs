@@ -10,6 +10,9 @@ namespace DFSystem.Editor
 {
 	public class CommandEditor : EditorWindow
 	{
+		//TODO: Allow more than one command for a char, and randomly choose which one to use.
+
+
 		public List<Command> Commands;
 
 		private List<string> nodeTypes;

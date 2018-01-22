@@ -45,6 +45,18 @@ namespace DFSystem
 											 string posName, string varNamePrefix,
 											 uint uniqueID, Dictionary<Node, uint> nodeToID);
 
+		public Node Clone()
+		{
+			//Serialize to a buffer, then deserialize from that buffer.
+			using (MemoryStream stream = new MemoryStream())
+			{
+				using (var writer = new BinaryWriter(stream))
+					Serialize(writer);
+				using (var reader = new BinaryReader(stream))
+					return Deserialize(reader);
+			}
+		}
+
 		public virtual void Serialize(BinaryWriter writer)
 		{
 			writer.Write(NodeSerialization.GetTypeName(this));

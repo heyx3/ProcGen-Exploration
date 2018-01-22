@@ -195,7 +195,8 @@ namespace LSystem.Editor
 				return o;
 			}
 
-" + DFSystem.DFTree.Funcs + "\n" + dfTree.GenerateDistanceFunc("distFunc") + @"
+" + DFSystem.DFTree.Funcs + Environment.NewLine + Environment.NewLine +
+	dfTree.GenerateDistanceFunc("distFunc") + @"
 
 			float4 frag(v2f IN) : SV_Target
 			{
@@ -211,7 +212,7 @@ namespace LSystem.Editor
 			//Create the shader object.
 			try
 			{
-				File.WriteAllText(filePath, shaderText.Replace("\r", "\n"));
+				File.WriteAllText(filePath, shaderText);
 			}
 			catch (Exception e)
 			{

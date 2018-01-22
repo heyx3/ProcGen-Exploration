@@ -39,5 +39,13 @@ namespace DFSystem
 			EndChar = (reader.ReadBoolean() ? reader.ReadChar() : new Nullable<char>());
 			Node = Node.Deserialize(reader);
 		}
+
+		public override string ToString()
+		{
+			string str = StartChar.ToString();
+			if (EndChar.HasValue)
+				str += EndChar.Value;
+			return str;
+		}
 	}
 }
