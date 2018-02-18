@@ -1,4 +1,6 @@
-﻿// Simple "just colors" shader that's used for built-in debug visualizations,
+﻿// Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
+
+// Simple "just colors" shader that's used for built-in debug visualizations,
 // in the editor etc. Just outputs _Color; and blend/Z/cull/bias
 // controlled by material parameters.
 
@@ -49,7 +51,7 @@ Shader "Unlit/WorldColorTex"
 			v2f vert (appdata_t v)
 			{
 				v2f o;
-				o.vertex = mul(UNITY_MATRIX_MVP, v.vertex);
+				o.vertex = UnityObjectToClipPos(v.vertex);
                 o.uv = v.uv;
 				return o;
 			}
