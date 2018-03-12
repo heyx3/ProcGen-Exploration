@@ -144,6 +144,10 @@ MonoBehaviour:
   Gaussian_NIterations: 7
   GreyscaleInput: 1
   EdgeDetectInput: 0
+  CannyInput: 0
+  Canny_MinWeakEdge: 0
+  Canny_MaxWeakEdge: 0.1
+  recompute: 0
 --- !u!4 &919124505
 Transform:
   m_ObjectHideFlags: 0

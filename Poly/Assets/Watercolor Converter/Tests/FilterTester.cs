@@ -15,10 +15,17 @@ namespace WatercolorConverter.Tests
 		public int Gaussian_NIterations = 3;
 		public Filters.GaussianBlurQuality GreyscaleInput;
 		public Filters.GreyscaleTypes EdgeDetectInput;
+		public Filters.EdgeFilters CannyInput;
+		public float Canny_MinWeakEdge = 0.0f,
+					 Canny_MaxWeakEdge = 0.1f;
+
+		[SerializeField]
+		private bool recompute = false;
 
 		private Texture out_gauss5, out_gauss9,
 						out_luminanceGrey,
-						out_sobel, out_prewitt, out_sobelDisplay, out_prewittDisplay;
+						out_sobel, out_prewitt, out_sobelDisplay, out_prewittDisplay,
+					    out_canny, out_cannyDisplay;
 
 
 		/// <summary>
@@ -62,9 +69,33 @@ namespace WatercolorConverter.Tests
 			out_sobel = Filters.EdgeFilter(Filters.EdgeFilters.Sobel, edgeInput);
 			out_prewitt = Filters.EdgeFilter(Filters.EdgeFilters.Prewitt, edgeInput);
 			//Filter the results for display.
-			out_sobelDisplay = Filters.PackVectors(out_sobel);
-			out_prewittDisplay = Filters.PackVectors(out_prewitt);
+			out_sobelDisplay = Filters.PackVectors(out_sobel, new Vector4(1, 1, 1, 0));
+			out_prewittDisplay = Filters.PackVectors(out_prewitt, new Vector4(1, 1, 1, 0));
+
+			//Run the "round angles" filter.
+			Texture cannyInput;
+			switch (CannyInput)
+			{
+				case Filters.EdgeFilters.Sobel:
+					cannyInput = out_sobel;
+					break;
+				case Filters.EdgeFilters.Prewitt:
+					cannyInput = out_prewitt;
+					break;
+				default: throw new NotImplementedException(CannyInput.ToString());
+			}
+			out_canny = Filters.CannyEdgeFilter(cannyInput, Canny_MinWeakEdge, Canny_MaxWeakEdge);
+			//Filter the results for display.
+			out_cannyDisplay = Filters.PackVectors(out_canny, new Vector4(1, 1, 0, 0));
         }
+		public void Update()
+		{
+			if (recompute)
+			{
+				recompute = false;
+				Start();
+			}
+		}
 
 		private Vector2 scrollPos = Vector2.zero;
 		private void OnGUI()
@@ -78,6 +109,7 @@ namespace WatercolorConverter.Tests
 				GUILayoutTex("Luminance Grey", out_luminanceGrey);
 				GUILayoutTex("Sobel", out_sobelDisplay);
 				GUILayoutTex("Prewitt", out_prewittDisplay);
+				GUILayoutTex("Canny", out_cannyDisplay);
 
 			}
 			GUILayout.EndScrollView();
