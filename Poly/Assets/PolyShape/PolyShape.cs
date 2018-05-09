@@ -137,6 +137,7 @@ public class PolyShape
             if (!float.IsNaN(pointRadius))
                 Gizmos.DrawSphere(transformedPoints[i], pointRadius);
         }
+		Gizmos.color = col;
     }
     /// <summary>
     /// Converts this polygon into a triangle mesh.

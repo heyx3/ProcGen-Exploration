@@ -19,6 +19,9 @@
 
         //Properties for the second pass:
         _Color ("In Poly Color", Color) = (1,1,1,1)
+        _BlendSrc ("Blend Src", Int) = 5 //SrcAlpha
+        _BlendDest ("Blend Dest", Int) = 10 //OneMinusSrcAlpha
+        _BlendOp ("Blend Op", Int) = 0 //Add
 	}
 	SubShader
 	{
@@ -69,7 +72,7 @@
 
 			float4 vert(float4 inV : POSITION) : SV_POSITION
 			{
-                float2 vertPos = tex2D(_MainTex, v.vertex.xy).xy;
+                float2 vertPos = tex2Dlod(_MainTex, float4(inV.xy, 0.0, 0.0)).xy;
                 vertPos = transformPoint(vertPos);
 
                 return float4(vertPos, 0.00001, 1.0);
@@ -84,7 +87,7 @@
 
                 //Add a third point -- the first vertex in the polygon.
                 v2f v3;
-                v3.vertex = float4(transformPoint(tex2D(_MainTex, float2(0.0, 0.0)).xy),
+                v3.vertex = float4(transformPoint(tex2Dlod(_MainTex, float4(0,0,0,0)).xy),
                                    input[0].vertex.z, 1.0);
                 OutputStream.Append(v3);
             }
@@ -99,7 +102,9 @@
 
 		Pass
 		{
-            Blend SrcAlpha OneMinusSrcAlpha
+            Blend [_BlendSrc] [_BlendDest]
+            BlendOp [_BlendOp]
+
             Stencil {
                 Ref 1
                 Comp Equal

@@ -86,6 +86,63 @@ public class PolyShapeGPU
 	{
 		baseShapeTex = null;
 	}
+	/// <summary>
+	/// Generates a new seed.
+	/// </summary>
+	public void ChangeSeed()
+	{
+		Seed = UnityEngine.Random.value + UnityEngine.Random.Range(0, 5);
+	}
+
+	/// <summary>
+	/// Generates a CPU PolyShape based on this one.
+	/// Intended for debugging, not efficient runtime use.
+	/// </summary>
+	/// <param name="variation">
+	/// If true, a random variation will be output.
+	/// Otherwise, the base shape will be output.
+	/// </param>
+	/// <param name="texBuffer">
+	/// A buffer to get the GPU shape data.
+	/// If null, a new one will be temporarily allocated.
+	/// If given a texture of the wrong size, it will be resized.
+	/// </param>
+	public PolyShape MakeCPUVersion(bool variation, Texture2D texBuffer = null)
+	{
+		//Get the shape's texture.
+		RenderTexture srcTex = BaseShapeTex;
+		if (variation)
+		{
+			var newSrc = RenderTexture.GetTemporary(VariationShapeSize, 1, 0,
+													RenderTextureFormat.ARGBFloat,
+													RenderTextureReadWrite.Linear);
+			GenerateVariation(newSrc);
+
+			srcTex = newSrc;
+		}
+
+		//Read the pixels.
+		if (texBuffer == null)
+		{
+			texBuffer = new Texture2D(srcTex.width, srcTex.height,
+									  TextureFormat.RGBAFloat, false, true);
+		}
+		if (texBuffer.width != srcTex.width || texBuffer.height != srcTex.height)
+			texBuffer.Resize(srcTex.width, srcTex.height);
+		RenderTexture.active = srcTex;
+		texBuffer.ReadPixels(new Rect(0.0f, 0.0f, texBuffer.width, texBuffer.height), 0, 0);
+		var pixels = texBuffer.GetPixels();
+
+		//Convert.
+		PolyShape outShape = new PolyShape(pixels.Select(p => new PolyShape.Point(new Vector2(p.r, p.g), p.b))
+												 .ToArray());
+
+		//Clean up.
+		if (variation)
+			RenderTexture.ReleaseTemporary(srcTex);
+
+		return outShape;
+	}
 
 	/// <summary>
 	/// Generates a variation on the base shape.
@@ -95,10 +152,22 @@ public class PolyShapeGPU
 	/// Its width must be equal to VariationShapeSize.
 	/// Its height must be 1.
 	/// </param>
-	public void GenerateVariation(RenderTexture output)
+	/// <param name="tempSeed">
+	/// The seed to use for this variation, or NaN to automatically generate one.
+	/// </param>
+	public void GenerateVariation(RenderTexture output, float tempSeed = float.NaN)
 	{
+		float currentSeed = Seed;
+		if (float.IsNaN(tempSeed))
+			ChangeSeed();
+		else
+			Seed = tempSeed;
+
 		GenerateShape(BaseShapeTex, output,
-					  NBaseShapeIterations, NSpecialIterations - 1);
+					  NBaseShapeIterations,
+					  NBaseShapeIterations + NSpecialIterations - 1);
+
+		Seed = currentSeed;
 	}
 
 	private void GenerateBaseShape()
@@ -117,14 +186,13 @@ public class PolyShapeGPU
 		RenderTexture startShape;
 		if (NBaseShapeIterations < 1)
 		{
-			startShape = new RenderTexture(NInitialPoints, 1, 16,
+			startShape = new RenderTexture(NInitialPoints, 1, 0,
 										   RenderTextureFormat.ARGBFloat,
 										   RenderTextureReadWrite.Linear);
 		}
 		else
 		{
-			startShape = RenderTexture.GetTemporary(NInitialPoints, 1, 16,
-													RenderTextureFormat.ARGBFloat,
+			startShape = RenderTexture.GetTemporary(NInitialPoints, 1, 0,													RenderTextureFormat.ARGBFloat,
 													RenderTextureReadWrite.Linear);
 		}
 		pointGenerateMat.SetFloat("_Seed", Seed);
@@ -133,6 +201,7 @@ public class PolyShapeGPU
 		pointGenerateMat.SetVector("_InitialVariance",
 								   new Vector2(avgVariance / VarianceScaleRandomness,
 											   avgVariance * VarianceScaleRandomness));
+		pointGenerateMat.SetFloat("_OutputSize", startShape.width);
 		Graphics.Blit(Texture2D.whiteTexture, startShape, pointGenerateMat, 0);
 
 		//Allocate the "base shape" texture.
@@ -140,7 +209,7 @@ public class PolyShapeGPU
 			baseShapeTex = startShape;
 		else
 		{
-			baseShapeTex = new RenderTexture(BaseShapeSize, 1, 16,
+			baseShapeTex = new RenderTexture(BaseShapeSize, 1, 0,
 											 RenderTextureFormat.ARGBFloat,
 											 RenderTextureReadWrite.Linear);
 		}
@@ -160,7 +229,7 @@ public class PolyShapeGPU
 		for (int i = firstIterationI; i <= lastIterationI; ++i)
 		{
 			//Get or make the destination render target.
-			if (i == NSpecialIterations - 1)
+			if (i == lastIterationI)
 			{
 				dest = outputShape;
 
@@ -171,7 +240,7 @@ public class PolyShapeGPU
 			}
 			else
 			{
-				dest = RenderTexture.GetTemporary(src.width * 2, 1, 16,
+				dest = RenderTexture.GetTemporary(src.width * 2, 1, 0,
 												  RenderTextureFormat.ARGBFloat,
 												  RenderTextureReadWrite.Linear);
 			}
@@ -185,13 +254,13 @@ public class PolyShapeGPU
 			float minVariance = variance + (1.0f / VarianceScaleRandomness),
 				  maxVariance = variance + VarianceScaleRandomness;
 
-			//Run the generator pass.
-			pointGenerateMat.SetFloat("_Seed", Seed * (i + 2));
+			//Run the refinement pass.
+			pointGenerateMat.SetFloat("_Seed", Seed * (i + 2.12375f));
 			pointGenerateMat.SetVector("_VarianceScale", new Vector2(minVariance, maxVariance));
 			Graphics.Blit(src, dest, pointGenerateMat, 1);
 
 			//Clean up and prepare for the next iteration.
-			if (i > 0)
+			if (i > firstIterationI)
 				RenderTexture.ReleaseTemporary(src);
 			src = dest;
 		}

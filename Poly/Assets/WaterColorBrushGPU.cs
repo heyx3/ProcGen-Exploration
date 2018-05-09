@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Rendering;
 
-//TODO: Test.
 
 /// <summary>
 /// Generates and renders watercolor blotches entirely on the GPU.
@@ -16,8 +16,12 @@ public class WaterColorBrushGPU
 
 	/// <summary>
 	/// Renders this shape into the given texture.
-	/// The texture's depth/stencil information will be messed with.
 	/// </summary>
+	/// <param name="outputTex">
+	/// The texture that will contain the result.
+	/// Must have stencil bits in the depth buffer.
+	/// Its depth/stencil buffer will be modified during rendering.
+	/// </param>
 	/// <param name="meshBuffer">
 	/// A mesh to use during rendering.
 	/// If the mesh does not have the right number of vertices, it will be updated.
@@ -29,7 +33,10 @@ public class WaterColorBrushGPU
 	/// The scale of this shape in the output texture.
 	/// </param>
 	public static void Render(Texture shapeTex, RenderTexture outputTex, Mesh meshBuffer,
-							  Vector2 offset, Vector2 scale, Color color)
+							  Vector2 offset, Vector2 scale, Color color,
+							  BlendMode blendSrc = BlendMode.SrcAlpha,
+							  BlendMode blendDest = BlendMode.OneMinusSrcAlpha,
+							  BlendOp blendOp = BlendOp.Add)
 	{
 		//Make sure we have the Material/shaders for this.
 		if (shapeRenderMat == null)
@@ -40,13 +47,6 @@ public class WaterColorBrushGPU
 
 			shapeRenderMat = new Material(shader);
 		}
-
-		//Allocate a texture for shape variations.
-		var variationShapeTex = RenderTexture.GetTemporary(shapeTex.width, 1, 16,
-														   RenderTextureFormat.ARGBFloat,
-														   RenderTextureReadWrite.Linear);
-		variationShapeTex.filterMode = FilterMode.Point;
-		variationShapeTex.wrapMode = TextureWrapMode.Repeat;
 
 		//Reset the mesh if it's not correct.
 		int nVerts = shapeTex.width;
@@ -75,6 +75,9 @@ public class WaterColorBrushGPU
 		shapeRenderMat.SetVector("_ShapeOffsetAndScale",
 								 new Vector4(offset.x, offset.y, scale.x, scale.y));
 		shapeRenderMat.color = color;
+		shapeRenderMat.SetInt("_BlendSrc", (int)blendSrc);
+		shapeRenderMat.SetInt("_BlendDest", (int)blendDest);
+		shapeRenderMat.SetInt("_BlendOp", (int)blendOp);
 
 		//Render the passes.
 		var oldRendTex = RenderTexture.active;
@@ -86,9 +89,39 @@ public class WaterColorBrushGPU
 		Graphics.DrawMeshNow(ScreenQuadRenderer.QuadMesh, Matrix4x4.identity);
 		RenderTexture.active = oldRendTex;
 	}
+	/// <summary>
+	/// Renders a full watercolor brush into the given texture.
+	/// </summary>
+	/// <param name="outputTex">
+	/// The RenderTexture used to hold the result.
+	/// Must have stencil bits in the depth buffer.
+	/// Its depth/stencil buffer will be modified during rendering.
+	/// </param>
+	/// <param name="nVariants">
+	/// The number of individual shapes to blend together.
+	/// </param>
+	/// <param name="color">
+	/// The color of each variant.
+	/// </param>
 	public static void RenderFull(PolyShapeGPU shape, RenderTexture outputTex, Mesh meshBuffer,
-								  int nVariants, Vector2 offset, Vector2 scale, Color color)
+								  int nVariants, Vector2 offset, Vector2 scale, Color color,
+								  BlendMode blendSrc = BlendMode.SrcAlpha,
+								  BlendMode blendDest = BlendMode.OneMinusSrcAlpha,
+								  BlendOp blendOp = BlendOp.Add)
 	{
-		//TODO: Render multiple variants.
+		var shapeVariantTex = RenderTexture.GetTemporary(shape.VariationShapeSize, 1, 0,
+														 RenderTextureFormat.ARGBFloat,
+														 RenderTextureReadWrite.Linear);
+		shapeVariantTex.filterMode = FilterMode.Point;
+		shapeVariantTex.wrapMode = TextureWrapMode.Repeat;
+
+		for (int i = 0; i < nVariants; ++i)
+		{
+			shape.GenerateVariation(shapeVariantTex);
+			Render(shapeVariantTex, outputTex, meshBuffer, offset, scale,
+				   color, blendSrc, blendDest, blendOp);
+		}
+
+		RenderTexture.ReleaseTemporary(shapeVariantTex);
 	}
 }
