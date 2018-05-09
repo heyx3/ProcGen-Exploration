@@ -28,7 +28,13 @@ public class PolyShapeGPU
 	public AnimationCurve VarianceScaleByIteration = new AnimationCurve(new Keyframe(0.0f, 0.25f),
 																	    new Keyframe(6.0f, 0.00625f));
 	/// <summary>
-	/// This value is used to randomize the "Variance Scale" for each point.
+	/// This value is used to randomize the "Variance Scale" for each point in the first iteration.
+	/// Given the average Variance Scale x, and VarianceScaleRandomness y,
+	///     the min Variance Scale is x/y and the max Variance scale is x*y.
+	/// </summary>
+	public float InitialVarianceScaleRandomness = 1.1f;
+	/// <summary>
+	/// This value is used to randomize the "Variance Scale" for each point in subsequent iterations.
 	/// Given the average Variance Scale x, and VarianceScaleRandomness y,
 	///     the min Variance Scale is x/y and the max Variance scale is x*y.
 	/// </summary>
@@ -199,8 +205,8 @@ public class PolyShapeGPU
 		pointGenerateMat.SetFloat("_Radius", InitialRadius);
 		float avgVariance = VarianceScaleByIteration.Evaluate(0.0f);
 		pointGenerateMat.SetVector("_InitialVariance",
-								   new Vector2(avgVariance / VarianceScaleRandomness,
-											   avgVariance * VarianceScaleRandomness));
+								   new Vector2(avgVariance / InitialVarianceScaleRandomness,
+											   avgVariance * InitialVarianceScaleRandomness));
 		pointGenerateMat.SetFloat("_OutputSize", startShape.width);
 		Graphics.Blit(Texture2D.whiteTexture, startShape, pointGenerateMat, 0);
 

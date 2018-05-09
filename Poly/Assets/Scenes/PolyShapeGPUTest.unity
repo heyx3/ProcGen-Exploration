@@ -141,18 +141,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Shape:
-    NInitialPoints: 16
+    NInitialPoints: 10
     InitialRadius: 1
-    NBaseShapeIterations: 5
-    NSpecialIterations: 1
+    NBaseShapeIterations: 4
+    NSpecialIterations: 2
     VarianceScaleByIteration:
       serializedVersion: 2
       m_Curve:
       - serializedVersion: 2
-        time: 0.012779865
-        value: 0.03967306
-        inSlope: -0.021271657
-        outSlope: -0.021271657
+        time: -0.008937206
+        value: 0.026840419
+        inSlope: -0.008144361
+        outSlope: -0.008144361
         tangentMode: 0
       - serializedVersion: 2
         time: 0.99772125
@@ -169,6 +169,7 @@ MonoBehaviour:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 0
+    InitialVarianceScaleRandomness: 2.5
     VarianceScaleRandomness: 1.6
     Seed: 0.34952348
   NVariations: 3
@@ -178,8 +179,11 @@ MonoBehaviour:
   GizmoSphereRadius: -1
   BlotchOffset: {x: 0, y: 0}
   BlotchScale: {x: 0.65, y: 0.65}
-  BlotchColor: {r: 1, g: 0, b: 0, a: 0.007843138}
+  BlotchColor: {r: 0, g: 0.029411793, b: 1, a: 0.007843138}
   BlotchBackColor: {r: 1, g: 0.95, b: 0.8, a: 1}
+  BlotchBlendSrc: 5
+  BlotchBlendDest: 10
+  BlotchBlendOp: 0
 --- !u!4 &463595898
 Transform:
   m_ObjectHideFlags: 0

@@ -22,6 +22,10 @@ namespace Tests
 		public Color BlotchColor = new Color(1.0f, 0.0f, 0.0f, 0.02f),
 					 BlotchBackColor = new Color(1.0f, 0.95f, 0.8f, 1.0f);
 
+		public UnityEngine.Rendering.BlendMode BlotchBlendSrc = UnityEngine.Rendering.BlendMode.SrcAlpha,
+											   BlotchBlendDest = UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha;
+		public UnityEngine.Rendering.BlendOp BlotchBlendOp = UnityEngine.Rendering.BlendOp.Add;
+
 		private PolyShape[] cpuShapes;
 		private RenderTexture[] cpuShapeRenders;
 		private RenderTexture blotch;
@@ -56,7 +60,8 @@ namespace Tests
 			RenderTexture.active = blotch;
 			GL.Clear(true, true, BlotchBackColor);
 			WaterColorBrushGPU.RenderFull(Shape, blotch, new Mesh(), NBlotchVariations,
-										  BlotchOffset, BlotchScale, BlotchColor);
+										  BlotchOffset, BlotchScale, BlotchColor,
+										  BlotchBlendSrc, BlotchBlendDest, BlotchBlendOp);
 		}
 
 		private void OnDrawGizmos()
