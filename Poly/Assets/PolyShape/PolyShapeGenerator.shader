@@ -43,7 +43,7 @@
         CGINCLUDE
 
         #include "UnityCG.cginc"
-        #include "Assets/FloatHashers.cginc"
+        #include "Assets/Gaussians.cginc"
 
         #define PI (3.14159265359)
         #define TWO_PI (PI * 2.0)
@@ -102,7 +102,7 @@
                       sourceUV2 = sourceUV1 + _MainTex_TexelSize.x;
 
                 float4 startVert = tex2D(_MainTex, float2(sourceUV1, 0.0));
-                float3 rngVals = hashTo3(float3(startVert.xy, _Seed));
+                float4 rngVals = hashTo4(float3(startVert.xy, _Seed));
 
                 //Scale down the variance for the next iteration.
                 float varianceScale = lerp(_VarianceScale.x, _VarianceScale.y, rngVals.x);
@@ -117,8 +117,12 @@
                 float4 endVert = tex2D(_MainTex, float2(sourceUV2, 0.0));
                 float4 midpoint = (startVert + endVert) / 2.0;
 
-                //TODO: Generate the offset with a uniform random angle and gaussian random radius. https://stackoverflow.com/questions/75677/converting-a-uniform-distribution-to-a-normal-distribution
-                float2 posOffset = startVert.z * lerp(-1.0, 1.0, rngVals.yz);
+                //Generate the offset using a uniform random angle and a Gaussian random magnitude.
+                float3 gaussianInput = hashTo3(rngVals.yz);
+                float angle = rngVals.w * TWO_PI,
+                      distance = startVert.z * gaussian(gaussianInput);
+                float2 posOffset = distance * float2(cos(angle), sin(angle));
+                //posOffset = startVert.z * lerp(-1.0, 1.0, gaussianInput.xy);
                 
                 return float4(midpoint.xy + posOffset,
                               startVert.z * varianceScale,

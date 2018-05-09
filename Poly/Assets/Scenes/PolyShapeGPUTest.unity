@@ -143,36 +143,42 @@ MonoBehaviour:
   Shape:
     NInitialPoints: 16
     InitialRadius: 1
-    NBaseShapeIterations: 4
-    NSpecialIterations: 3
+    NBaseShapeIterations: 5
+    NSpecialIterations: 1
     VarianceScaleByIteration:
       serializedVersion: 2
       m_Curve:
       - serializedVersion: 2
-        time: -0.006327953
-        value: 0.08444998
-        inSlope: -0.022234347
-        outSlope: -0.022234347
+        time: 0.012779865
+        value: 0.03967306
+        inSlope: -0.021271657
+        outSlope: -0.021271657
         tangentMode: 0
       - serializedVersion: 2
-        time: 5.9936523
-        value: 0.0017791749
+        time: 0.99772125
+        value: 0.0063010473
+        inSlope: -0.0037097125
+        outSlope: -0.0037097125
+        tangentMode: 0
+      - serializedVersion: 2
+        time: 5.9972873
+        value: 0.00089416513
         inSlope: 0
         outSlope: 0
         tangentMode: 0
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 0
-    VarianceScaleRandomness: 1.5
+    VarianceScaleRandomness: 1.6
     Seed: 0.34952348
   NVariations: 3
-  NBlotchVariations: 50
+  NBlotchVariations: 100
   RenderSize: 256
   BlotchRenderSize: 512
   GizmoSphereRadius: -1
   BlotchOffset: {x: 0, y: 0}
-  BlotchScale: {x: 0.5, y: 0.5}
-  BlotchColor: {r: 1, g: 0, b: 0, a: 0.011764706}
+  BlotchScale: {x: 0.65, y: 0.65}
+  BlotchColor: {r: 1, g: 0, b: 0, a: 0.007843138}
   BlotchBackColor: {r: 1, g: 0.95, b: 0.8, a: 1}
 --- !u!4 &463595898
 Transform:
