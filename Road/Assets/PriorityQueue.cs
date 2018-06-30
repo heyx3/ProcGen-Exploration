@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 
+using Assert = UnityEngine.Assertions.Assert;
+
 
 /// <summary>
 /// A queue that automatically sorts its elements based on a floating-point "weight".
