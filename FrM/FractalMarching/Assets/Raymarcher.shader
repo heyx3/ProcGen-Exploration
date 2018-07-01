@@ -46,21 +46,60 @@ Shader "Unlit/Raymarcher"
                 return float4(getSphereDist(pos, 0.0, 3.0),
                               float3(1.0, 1.0, 0.5));
             }
+            float3 getNormal(float3 pos)
+            {
+                float2 c = float2(0.0, 0.01);
+                float sample_ = getWorldDistAndData(pos),
+                      sampleX = getWorldDistAndData(pos + c.yxx),
+                      sampleY = getWorldDistAndData(pos + c.xyx),
+                      sampleZ = getWorldDistAndData(pos + c.xxy);
+                return normalize(float3(sampleX - sample_,
+                                        sampleY - sample_,
+                                        sampleZ - sample_));
+            }
+
+            bool marchToSurface(inout float3 pos, float3 dir, int nIterations,
+                                out float3 data, out float dist)
+            {
+                for (int i = 0; i < nIterations; ++i)
+                {
+                    float4 d = getWorldDistAndData(pos);
+                    dist = d.x;
+                    data = d.yzw;
+
+                    if (dist < 0.01)
+                        return true;
+
+                    pos += (dir * dist);
+                }
+
+                return false;
+            }
+
+            float3 lightSurface(float3 surfaceCol, float3 normal)
+            {
+                float3 lightDir = normalize(float3(1, -1, 1));
+
+                return surfaceCol * dot(normal, -lightDir);
+            }
 
 			fixed4 frag (v2f v) : SV_Target
 			{
                 float3 ray = normalize(v.worldPos - _WorldSpaceCameraPos);
 
                 float3 marchPos = _WorldSpaceCameraPos;
-                for (int i = 0; i < _MaxSteps; ++i)
-                {
-                    float4 distAndData = getWorldDistAndData(marchPos);
-                    if (distAndData.x < 0.01)
-                        return float4(distAndData.yzw, 1.0);
-                    marchPos += ray * distAndData.x;
-                }
+                float3 data;
+                float dist;
+                bool hit = marchToSurface(marchPos, ray, _MaxSteps, data, dist);
 
-				return float4(_SkyColor, 1.0);
+                if (!hit)
+                    return float4(_SkyColor, 1.0);
+
+                float3 normal = getNormal(marchPos),
+                       surfaceColor = data,
+                       litSurfaceColor = lightSurface(surfaceColor, normal);
+
+                return float4(litSurfaceColor, 1.0);
 			}
 			ENDCG
 		}
