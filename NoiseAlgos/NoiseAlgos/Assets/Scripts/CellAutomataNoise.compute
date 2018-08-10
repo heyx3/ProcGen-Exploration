@@ -1,0 +1,138 @@
+﻿// A noise-generation algorithm that uses cellular automata.
+// Based on this algorithm: https://www.reddit.com/r/proceduralgeneration/comments/95rtk1/i_came_up_with_a_noise_algorithm_that_ended_up/
+
+//To use this noise algorithm, do the following:
+//    1. Run "GetPullDirs" kernel.
+//    2. Set "NCompletedPixels" to 0.
+//    3. While "NCompletedPixels" is less than the total number of pixels:
+//        a. Set "NCompletedPixels" to 0.
+//        b. Swap u_Input and u_Output.
+//        c. Run "RunIteration" kernel.
+
+//GetPullDirs calculates, for each pixel, which neighbors it pulls from.
+//It writes the result to u_PullDir.
+#pragma kernel GetPullDirs
+
+//RunIteration runs an iteration of the cellular automata.
+//It reads the current state from u_Input and writes it to u_Output.
+#pragma kernel RunIteration
+
+
+//----------- PARAMETERS/INPUTS/OUTPUTS -------------
+
+
+const uint MAX_POINTS = 16;
+uniform uint u_NumbPoints = 0;
+uniform uint2 pointPixels[16];
+
+//A floating-point texture containing the random mutations that can be applied to a new cell value.
+//The mutation is calculated by sampling this texture at a uniform-random pixel.
+uniform Texture2D u_MutationRange;
+uniform SamplerState sampler_u_MutationRange;
+
+//The X is the horizontal direction to pull from (-1, 0, or +1).
+//The Y is the vertical direction to pull from (-1, 0, or +1).
+uniform RWTexture2D<int2> u_PullDirs;
+//The X is the value (if set).
+//The Y is 0 if not set, or 1 if set.
+uniform RWTexture2D<float2> u_Input, u_Output;
+//Should be set to a single value of 0 before running the kernel.
+//Will be incremented once for every pixel that is completed.
+uniform RWStructuredBuffer<uint> NCompletedPixels;
+
+
+
+
+//---------- HELPER FUNCTIONS ----------------
+
+float2 getPixelCenter(uint2 pixel)
+{
+    return float2(pixel.x + 0.5, pixel.y + 0.5);
+}
+
+//Finds the closest point.
+//The Z component contains the distance to that point.
+//Assumes u_NumbPoints is greater than 0.
+float3 getClosestPointAndDist(float2 pixelPos)
+{
+    float2 closest = pointPixels[0];
+    float closestDist = distance(pixelPos, closest);
+    for (uint i = 1; i < u_NumbPoints; ++i)
+    {
+        float2 p = getPixelCenter(pointPixels[i]);
+        float dist = distance(pixelPos, p);
+        if (dist < closestDist)
+        {
+            closest = p;
+            closestDist = dist;
+        }
+    }
+
+    return float3(closest, closestDist);
+}
+
+
+
+//----------- KERNELS ------------
+
+[numthreads(8,8,1)]
+void GetPullDirs(uint3 id : SV_DispatchThreadID)
+{
+    int2 pullDirs;
+
+    //Edge-case: there are no points.
+    if (u_NumbPoints < 1)
+    {
+        pullDirs = 0;
+    }
+    else
+    {
+        //Get the closest point.
+        float2 myP = getPixelCenter(id.xy);
+        float3 closestPoint = getClosestPointAndDist(myP);
+
+        //The first pull direction is the vertical delta to the point.
+        //The second pull direction is the horizontal delta to the point.
+        //Scale the pull directions based on how far they are.
+        float2 toPoint = closestPoint.xy - myP;
+        const float epsilon = 1.0001;
+        pullDirs = int2(sign(closestPoint.xy - myP) * epsilon);
+    }
+
+    u_PullDirs[id.xy] = pullDirs;
+}
+
+//Runs the cellular automata.
+[numthreads(8,8,1)]
+void RunIteration(uint3 id : SV_DispatchThreadID)
+{
+    uint2 texDim = 0;
+    u_Output.GetDimensions(texDim.x, texDim.y);
+
+    int2 pullDir = u_PullDirs[id.xy];
+    float2 myState = u_Input[id.xy];
+
+    //If this cell is already set, exit.
+    if (myState.y > 0.5)
+        return;
+
+    //Get the state of the neighbors.
+    //Note that according to DirectX, accessing a texture outside its bounds will return 0.
+    float2 neighborStateX = u_Input[id.xy + uint2(pullDir.x, 0)],
+           neighborStateY = u_Input[id.xy + uint2(0, pullDir.y)];
+
+    //If one of the neighbors isn't set, exit.
+    if (neighborStateX.y == 0.0 | neighborStateY.y == 0.0)
+        return;
+
+    //Calculate this cell's value.
+    float baseValue = (neighborStateX.x + neighborStateY.x) / 2;
+    float mutateT = 0.0, //TODO: Generate random value using ID and a seed.
+          mutateValue = u_MutationRange.SampleLevel(sampler_u_MutationRange,
+                                                    float2(mutateT, 0.5),
+                                                    0).x;
+    float cellValue = baseValue + mutateValue;
+
+    InterlockedAdd(NCompletedPixels[0], 1);
+	u_Output[id.xy] = float2(cellValue, 1.0);
+}
