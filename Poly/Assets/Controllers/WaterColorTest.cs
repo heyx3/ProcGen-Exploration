@@ -49,7 +49,7 @@ public class WaterColorTest : MonoBehaviour
         //Set up the screen-space renderer.
         screenRenderer.TurnOffTests();
         screenRenderer.UseAlphaBlending();
-        screenRenderer.UseTintTex(Brush.InstanceShapeRender, Col);
+        screenRenderer.UseTintTex(Brush.RenderedShape, Col);
 
         //Render the watercolor images.
         for (int i = 0; i < NBlotches; ++i)

@@ -70,7 +70,7 @@ public class WaterColorBrush
     /// </summary>
     public PolyShape InstanceShape { get; private set; }
 
-    public RenderTexture InstanceShapeRender { get { return shapeRender; } }
+    public RenderTexture RenderedShape { get { return shapeRender; } }
 
     private PolyShape baseShape;
     private RenderTexture shapeRender;
@@ -79,12 +79,19 @@ public class WaterColorBrush
     private static Material shapeRenderMat;
     private static Shader stencilPass, renderPass;
 
-    
+
     /// <summary>
     /// Generates a new BaseShape value.
     /// The InstanceShape will be replaced with this value as well.
     /// </summary>
-    public void GenerateBaseBlotch()
+	/// <param name="render">
+	/// If true, the base shape will immediately be rendered to "RenderedShape".
+	/// </param>
+	/// <param name="renderInto">
+	/// If "render" is true, this is the texture that will be rendered into.
+	/// Pass null to render into "RenderedShape".
+	/// </param>
+    public void GenerateBaseBlotch(bool render = false, RenderTexture renderInto = null)
     {
         Update();
 
@@ -93,48 +100,65 @@ public class WaterColorBrush
                                   InitialBlotchPoints, InitialVarianceSpread);
 
         Subdivide(BaseShape, 0, InitialBlotchIterations - 1);
+
+		if (render)
+			Render(baseShape, renderInto == null ? RenderedShape : renderInto);
     }
-    /// <summary>
-    /// Generates a new InstanceShape value based off the BaseShape.
-    /// Also rasterizes it into "InstanceShapeRender".
-    /// </summary>
-    public void GenerateInstanceBlotch()
-    {
-        Update();
+	/// <summary>
+	/// Generates a new InstanceShape value based off the BaseShape.
+	/// </summary>
+	/// <param name="render">
+	/// If true, this instance shape will immediately be rendered to "RenderedShape".
+	/// </param>
+	/// <param name="renderInto">
+	/// If "render" is true, this is the texture that will be rendered into.
+	/// Pass null to render into "RenderedShape".
+	/// </param>
+	public void GenerateInstanceBlotch(bool render = true, RenderTexture renderInto = null)
+	{
+		Update();
 
-        UnityEngine.Assertions.Assert.IsNotNull(BaseShape, "Didn't generate a base shape first!");
+		UnityEngine.Assertions.Assert.IsNotNull(BaseShape, "Didn't generate a base shape first!");
 
-        //Make a copy of the base shape.
-        var points = new PolyShape.Point[BaseShape.NPoints];
-        for (int i = 0; i < points.Length; ++i)
-            points[i] = new PolyShape.Point(BaseShape.GetPoint(i), baseShape.GetVariance(i));
-        InstanceShape = new PolyShape(points);
+		//Make a copy of the base shape.
+		var points = new PolyShape.Point[BaseShape.NPoints];
+		for (int i = 0; i < points.Length; ++i)
+			points[i] = new PolyShape.Point(BaseShape.GetPoint(i), baseShape.GetVariance(i));
+		InstanceShape = new PolyShape(points);
 
-        Subdivide(InstanceShape,
-                  InitialBlotchIterations,
-                  InitialBlotchIterations + ExtraBlotchIterations - 1);
+		Subdivide(InstanceShape,
+				  InitialBlotchIterations,
+				  InitialBlotchIterations + ExtraBlotchIterations - 1);
 
-
-        //Render the instance blotch to the texture.
+		if (render)
+			Render(InstanceShape, renderInto == null ? RenderedShape : renderInto);
+	}
+	
+	/// <summary>
+	/// Renders the given shape into the given RenderTexture.
+	/// </summary>
+	public void Render(PolyShape shape, RenderTexture output)
+	{
+		Update();
 
         //Set up the mesh, using a simple line strip.
         shapeMesh.Clear();
-        shapeMesh.vertices = InstanceShape.Points.Select(v => new Vector3(v.x, v.y, 0.01f)).ToArray();
-        shapeMesh.SetIndices(InstanceShape.NPoints.CountSequence(1).ToArray(),
+        shapeMesh.vertices = shape.Points.Select(v => new Vector3(v.x, v.y, 0.01f)).ToArray();
+        shapeMesh.SetIndices(shape.NPoints.CountSequence(1).ToArray(),
                              MeshTopology.LineStrip, 0);
         shapeMesh.UploadMeshData(false);
 
         //Render the shape as white on a black transparent background.
         var oldRendTex = RenderTexture.active;
-        RenderTexture.active = InstanceShapeRender;
+        RenderTexture.active = output;
         GL.Clear(true, true, new Color(0.0f, 0.0f, 0.0f, 0.0f));
         shapeRenderMat.shader = stencilPass;
-        shapeRenderMat.SetVector("_ShapeMin", InstanceShape.Min);
-        shapeRenderMat.SetVector("_ShapeMax", InstanceShape.Max);
+        shapeRenderMat.SetVector("_ShapeMin", shape.Min);
+        shapeRenderMat.SetVector("_ShapeMax", shape.Max);
         shapeRenderMat.SetVector("_PointOnShape",
                                  MathF.Lerp(-1.0f, 1.0f,
-                                            MathF.InverseLerp(InstanceShape.Min, InstanceShape.Max,
-                                                              InstanceShape.GetPoint(0))));
+                                            MathF.InverseLerp(shape.Min, shape.Max,
+                                                              shape.GetPoint(0))));
         shapeRenderMat.SetPass(0);
         Graphics.DrawMeshNow(shapeMesh, Matrix4x4.identity);
         shapeRenderMat.shader = renderPass;

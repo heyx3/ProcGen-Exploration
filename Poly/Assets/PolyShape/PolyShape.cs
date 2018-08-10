@@ -5,7 +5,7 @@ using UnityEngine;
 
 
 /// <summary>
-/// A polygon shape, defined by its points.
+/// A concave polygon, defined by its points.
 /// </summary>
 [Serializable]
 public class PolyShape
@@ -94,8 +94,6 @@ public class PolyShape
             var splitResult = splitter(a.P, b.P, a.Variance);
             newPoints[i - 1] = new Point(newPoints[i - 1].P, splitResult.FirstHalfVariance);
             newPoints[i] = new Point(splitResult.NewMidpoint, splitResult.SecondHalfVariance);
-
-            //Debug.Log((i - 1).ToString() + " " + newPoints[i - 1].Variance);
         }
 
         points = newPoints;
@@ -139,6 +137,7 @@ public class PolyShape
             if (!float.IsNaN(pointRadius))
                 Gizmos.DrawSphere(transformedPoints[i], pointRadius);
         }
+		Gizmos.color = col;
     }
     /// <summary>
     /// Converts this polygon into a triangle mesh.
