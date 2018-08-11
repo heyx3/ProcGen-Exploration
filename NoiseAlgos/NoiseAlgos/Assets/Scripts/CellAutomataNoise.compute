@@ -1,13 +1,25 @@
 ﻿// A noise-generation algorithm that uses cellular automata.
-// Based on this algorithm: https://www.reddit.com/r/proceduralgeneration/comments/95rtk1/i_came_up_with_a_noise_algorithm_that_ended_up/
+// Based on this: https://www.reddit.com/r/proceduralgeneration/comments/95rtk1/i_came_up_with_a_noise_algorithm_that_ended_up/
 
-//To use this noise algorithm, do the following:
-//    1. Run "GetPullDirs" kernel.
-//    2. Set "NCompletedPixels" to 0.
-//    3. While "NCompletedPixels" is less than the total number of pixels:
-//        a. Set "NCompletedPixels" to 0.
-//        b. Swap u_Input and u_Output.
-//        c. Run "RunIteration" kernel.
+//To use this algorithm, do the following:
+//    1. Set u_PullDirs.
+//    2. Set some points in u_PointPixels, and set u_NumbPoints accordingly.
+//    3. Run the "GetPullDirs" kernel.
+//    4. Set u_MutationRange.
+//    5. Set u_Input, and u_Output, to have the same dimensions as u_PullDirs.
+//    6. Clear u_Input to be transparent black (#00000000).
+//    6. Set "NCompletedPixels" to be a 1-element array with the value 0.
+//    7. While "NCompletedPixels[0]" is less than the total number of pixels:
+//        a. Set "NCompletedPixels[0]" to 0.
+//        b. Set u_Seed to a random value.
+//        c. Run the "RunIteration" kernel.
+//        d. Swap u_Input and u_Output.
+
+
+#include "FloatHashers.cginc"
+
+
+//----------- KERNEL DEFINITIONS ----------------
 
 //GetPullDirs calculates, for each pixel, which neighbors it pulls from.
 //It writes the result to u_PullDir.
@@ -20,10 +32,12 @@
 
 //----------- PARAMETERS/INPUTS/OUTPUTS -------------
 
+//It is recommended to change this value every time a RunIteration kernel is run.
+uniform float2 u_Seed;
 
 const uint MAX_POINTS = 16;
 uniform uint u_NumbPoints = 0;
-uniform uint2 pointPixels[16];
+uniform uint2 u_PointPixels[16];
 
 //A floating-point texture containing the random mutations that can be applied to a new cell value.
 //The mutation is calculated by sampling this texture at a uniform-random pixel.
@@ -37,13 +51,19 @@ uniform RWTexture2D<int2> u_PullDirs;
 //The Y is 0 if not set, or 1 if set.
 uniform RWTexture2D<float2> u_Input, u_Output;
 //Should be set to a single value of 0 before running the kernel.
-//Will be incremented once for every pixel that is completed.
+//Will be incremented once for every pixel that is set and no longer needs to be simulated.
 uniform RWStructuredBuffer<uint> NCompletedPixels;
 
 
-
-
 //---------- HELPER FUNCTIONS ----------------
+
+float2 signF(float2 x, float epsilon)
+{
+    bool2 isTiny = abs(x) < epsilon;
+    float2 normalSign = sign(x);
+    return float2(isTiny.x ? 0.0 : normalSign.x,
+                  isTiny.y ? 0.0 : normalSign.y);
+}
 
 float2 getPixelCenter(uint2 pixel)
 {
@@ -55,11 +75,11 @@ float2 getPixelCenter(uint2 pixel)
 //Assumes u_NumbPoints is greater than 0.
 float3 getClosestPointAndDist(float2 pixelPos)
 {
-    float2 closest = pointPixels[0];
+    float2 closest = u_PointPixels[0];
     float closestDist = distance(pixelPos, closest);
     for (uint i = 1; i < u_NumbPoints; ++i)
     {
-        float2 p = getPixelCenter(pointPixels[i]);
+        float2 p = getPixelCenter(u_PointPixels[i]);
         float dist = distance(pixelPos, p);
         if (dist < closestDist)
         {
@@ -95,8 +115,8 @@ void GetPullDirs(uint3 id : SV_DispatchThreadID)
         //The second pull direction is the horizontal delta to the point.
         //Scale the pull directions based on how far they are.
         float2 toPoint = closestPoint.xy - myP;
-        const float epsilon = 1.0001;
-        pullDirs = int2(sign(closestPoint.xy - myP) * epsilon);
+        const float epsilon = 1.001;
+        pullDirs = int2(signF(closestPoint.xy - myP, 0.01) * epsilon);
     }
 
     u_PullDirs[id.xy] = pullDirs;
@@ -127,7 +147,7 @@ void RunIteration(uint3 id : SV_DispatchThreadID)
 
     //Calculate this cell's value.
     float baseValue = (neighborStateX.x + neighborStateY.x) / 2;
-    float mutateT = 0.0, //TODO: Generate random value using ID and a seed.
+    float mutateT = hashTo1(float4(float2(id.xy), u_Seed)),
           mutateValue = u_MutationRange.SampleLevel(sampler_u_MutationRange,
                                                     float2(mutateT, 0.5),
                                                     0).x;
