@@ -21,6 +21,7 @@ namespace Tests
 
 
 		public MutatedAverageNoise Noise = new MutatedAverageNoise();
+		public float DisplayTexSize = 256.0f;
 
 		public States State { get; private set; }
 
@@ -60,11 +61,23 @@ namespace Tests
 					GUILayout.Label("Running...");
 					resultTex = Noise.GetResult();
 
-					var texSpace = GUILayoutUtility.GetRect(resultTex.width, resultTex.height);
+					GUILayout.BeginHorizontal();
+
+					var texSpace = GUILayoutUtility.GetRect(DisplayTexSize, DisplayTexSize);
 					GUI.Box(new Rect(texSpace.min - new Vector2(2, 2),
 									 texSpace.size + new Vector2(4, 4)),
 							"");
-					GUI.DrawTexture(texSpace, resultTex, ScaleMode.ScaleToFit);
+					GUI.DrawTexture(texSpace, Noise.GetPullDirs(), ScaleMode.ScaleToFit, false);
+
+					GUILayout.Space(10.0f);
+
+					texSpace = GUILayoutUtility.GetRect(DisplayTexSize, DisplayTexSize);
+					GUI.Box(new Rect(texSpace.min - new Vector2(2, 2),
+									 texSpace.size + new Vector2(4, 4)),
+							"");
+					GUI.DrawTexture(texSpace, resultTex, ScaleMode.ScaleToFit, false);
+
+					GUILayout.EndHorizontal();
 
 					int nIterations = 0;
 					if (GUILayout.Button("Run 1 iteration"))
@@ -88,7 +101,7 @@ namespace Tests
 				case States.Finished:
 					GUILayout.Label("Finished!");
 					resultTex = Noise.GetResult();
-					GUI.DrawTexture(GUILayoutUtility.GetRect(resultTex.width, resultTex.height),
+					GUI.DrawTexture(GUILayoutUtility.GetRect(DisplayTexSize, DisplayTexSize),
 									resultTex, ScaleMode.ScaleToFit);
 					break;
 

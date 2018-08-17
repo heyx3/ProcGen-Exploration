@@ -5,28 +5,30 @@ using UnityEngine;
 
 
 [Serializable]
-public struct Vector2u
-{
-	public uint x, y;
-	public Vector2u(uint _x, uint _y) { x = _x; y = _y; }
-	public override string ToString()
-	{
-		return "{" + x + "," + y + "}";
-	}
-}
-
-
-[Serializable]
 public class MutatedAverageNoise : IDisposable
 {
+	[Serializable]
+	public struct Point
+	{
+		public uint x, y;
+		public float Value;
+		public Point(uint _x, uint _y, float value) { x = _x; y = _y; Value = value; }
+		public override string ToString()
+		{
+			return "{" + x + "," + y + "}";
+		}
+	}
+
+
 	//Constants:
 	public static readonly uint MAX_POINTS = 16; //This must be the same value as it is in the shader!
 
 
 	public ComputeShader Shader;
-	public Vector2u OutputSize = new Vector2u(256, 256);
+	public uint OutputWidth = 256,
+				OutputHeight = 256;
 
-	public List<Vector2u> PixelPoints = new List<Vector2u>() { new Vector2u(0, 0) };
+	public List<Point> PixelPoints = new List<Point>() { new Point(0, 0, 0.0f) };
 
 	public AnimationCurve MutationCurve = AnimationCurve.EaseInOut(0.0f, -1.0f, 1.0f, 1.0f);
 	public int MutationCurveResolution = 256;
@@ -39,7 +41,7 @@ public class MutatedAverageNoise : IDisposable
 						  buffer_Input, buffer_Output;
 	private Texture2D mutationCurveTex;
 	private ComputeBuffer buffer_FinishedPixelCounter;
-	private int kernel_GetPullDirs, kernel_RunIteration;
+	private int kernel_Init, kernel_RunIteration;
 	private uint[] data_FinishedPixelCounter = new uint[0];
 	private Texture2D resultCopy;
 
@@ -51,30 +53,26 @@ public class MutatedAverageNoise : IDisposable
 		//Get shader data.
 		if (Shader == null)
 			throw new ArgumentException("Shader for MutatedAverageNoise isn't set!");
-		kernel_GetPullDirs = Shader.FindKernel("GetPullDirs");
+		kernel_Init = Shader.FindKernel("Init");
 		kernel_RunIteration = Shader.FindKernel("RunIteration");
 
 		//Set up buffers.
 
-		buffer_PullDirs = new RenderTexture((int)OutputSize.x, (int)OutputSize.y, 0,
+		buffer_PullDirs = new RenderTexture((int)OutputWidth, (int)OutputHeight, 0,
 											RenderTextureFormat.RG16,
 											RenderTextureReadWrite.Linear);
 		buffer_PullDirs.Create();
-		Shader.SetTexture(kernel_GetPullDirs, "u_PullDirs", buffer_PullDirs);
+		Shader.SetTexture(kernel_Init, "u_PullDirs", buffer_PullDirs);
 		Shader.SetTexture(kernel_RunIteration, "u_PullDirs", buffer_PullDirs);
 
-		buffer_Input = new RenderTexture((int)OutputSize.x, (int)OutputSize.y, 0,
+		buffer_Input = new RenderTexture((int)OutputWidth, (int)OutputHeight, 0,
 										  RenderTextureFormat.RGHalf,
 										  RenderTextureReadWrite.Linear);
 		buffer_Input.Create();
-		RenderTexture.active = buffer_Input;
-		GL.Clear(false, true, new Color(0, 0, 0, 0));
 
-		buffer_Output = new RenderTexture((int)OutputSize.x, (int)OutputSize.y, 0,
+		buffer_Output = new RenderTexture((int)OutputWidth, (int)OutputHeight, 0,
 										  buffer_Input.format, RenderTextureReadWrite.Linear);
 		buffer_Output.Create();
-		RenderTexture.active = buffer_Output;
-		GL.Clear(false, true, new Color(0, 0, 0, 0));
 
 		buffer_FinishedPixelCounter = new ComputeBuffer(1, sizeof(uint),
 														ComputeBufferType.Default);
@@ -82,7 +80,8 @@ public class MutatedAverageNoise : IDisposable
 		Shader.SetBuffer(kernel_RunIteration, "NCompletedPixels", buffer_FinishedPixelCounter);
 
 		//Set up the mutation curve.
-		mutationCurveTex = new Texture2D(MutationCurveResolution, 1, TextureFormat.RFloat, false, true);
+		mutationCurveTex = new Texture2D(MutationCurveResolution, 1, TextureFormat.RFloat,
+										 false, true);
 		var mutationCurvePixels = new Color[mutationCurveTex.width];
 		for (int i = 0; i < mutationCurvePixels.Length; ++i)
 		{
@@ -94,25 +93,31 @@ public class MutatedAverageNoise : IDisposable
 		mutationCurveTex.Apply();
 		Shader.SetTexture(kernel_RunIteration, "u_MutationRange", mutationCurveTex);
 
-		//Run the "GetPullDirs" pass.
-		if (PixelPoints.Count < MAX_POINTS)
+		//Run the "Init" pass.
+		if (PixelPoints.Count > MAX_POINTS)
 		{
 			throw new ArgumentException("More than " + MAX_POINTS +
 										    " points! The shader doesn't support that");
 		}
+		Shader.SetTexture(kernel_Init, "u_Output", buffer_Output);
 		Shader.SetInt("u_NumbPoints", PixelPoints.Count);
 		Shader.SetInts("u_PointPixels",
-					   PixelPoints.SelectMany(v => new uint[] { v.x, v.y })
-								  .Cast<int>()
+					   PixelPoints.SelectMany(v => new int[] { (int)v.x, (int)v.y })
 								  .ToArray());
-		Shader.Dispatch(kernel_GetPullDirs, buffer_PullDirs.width, buffer_PullDirs.height, 1);
+		Shader.SetFloats("u_PointValues",
+						 PixelPoints.Select(p => p.Value)
+									.ToArray());
+		Shader.Dispatch(kernel_Init, buffer_PullDirs.width, buffer_PullDirs.height, 1);
 	}
 	public void Dispose()
 	{
-		buffer_PullDirs.Release();
-		buffer_Input.Release();
-		buffer_Output.Release();
-		buffer_FinishedPixelCounter.Dispose();
+		if (buffer_PullDirs != null)
+		{
+			buffer_PullDirs.Release();
+			buffer_Input.Release();
+			buffer_Output.Release();
+			buffer_FinishedPixelCounter.Dispose();
+		}
 	}
 
 	/// <summary>
@@ -178,4 +183,10 @@ public class MutatedAverageNoise : IDisposable
 
 		return result;
 	}
+
+	/// <summary>
+	/// Gets the texture containing the "pull direction" of each pixel.
+	/// Mainly for debugging/testing.
+	/// </summary>
+	public RenderTexture GetPullDirs() { return buffer_PullDirs; }
 }
